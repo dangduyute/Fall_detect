@@ -188,37 +188,31 @@ void loop() {
   pox.update();
   unsigned long now = millis();
 
- 
-  if (!maxUpdatedMidCycle && (now - lastUpdateTemp > tempInterval / 2)) {
+  if (now - lastUpdateTemp > tempInterval) {
+    // Đọc nhịp tim và SpO2
     bpm = pox.getHeartRate();
     spo2 = pox.getSpO2();
     Firebase.setFloat(firebaseData, "/sensor/bpm", bpm);
     Firebase.setFloat(firebaseData, "/sensor/spo2", spo2);
-    Serial.printf("[MAX30100 - 5s] BPM: %.1f, SpO2: %.1f%%\n", bpm, spo2);
+    Serial.printf("[MAX30100 - 10s] BPM: %.1f, SpO2: %.1f%%\n", bpm, spo2);
 
-    maxUpdatedMidCycle = true;
-  }
-
-
-  if (now - lastUpdateTemp > tempInterval) {
+    // Đọc nhiệt độ
     float ambient = mlx.readAmbientTempC();
     float object = mlx.readObjectTempC();
-
     if (!isnan(ambient) && !isnan(object)) {
       ambientTemp = ambient;
       objectTemp = object;
 
       Firebase.setFloat(firebaseData, "/sensor/ambient_temp", ambientTemp);
       Firebase.setFloat(firebaseData, "/sensor/object_temp", objectTemp);
-
       Serial.printf("[MLX90614 - 10s] Môi trường: %.1f°C, Cơ thể: %.1f°C\n", ambientTemp, objectTemp);
     }
 
+    // Cập nhật thời gian lần cuối
     lastUpdateTemp = now;
-    maxUpdatedMidCycle = false;
   }
 
-  
+  // Kiểm tra chuyển động để thu thập dữ liệu
   if (!isCollecting && now - lastMotionCheck > motionCheckInterval) {
     int16_t ax, ay, az, gx, gy, gz;
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
@@ -239,11 +233,10 @@ void loop() {
     lastMotionCheck = now;
   }
 
-
   if (isCollecting) {
     runInference();
     isCollecting = false;
   }
 
-  delay(10); // tránh watchdog reset
+  delay(10); 
 }
